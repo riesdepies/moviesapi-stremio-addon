@@ -126,12 +126,15 @@
             const copyButton = document.getElementById('copy-button');
             
             const manifestUrl = window.location.origin + '/manifest.json';
-            const stremioInstallUrl = 'stremio://install-addon?manifest_url=' + encodeURIComponent(manifestUrl);
             
-            // Zet de link op de knop
+            // --- DIT IS DE AANGEPASTE REGEL ---
+            // We creëren de 'directe' URL door 'https://' te vervangen met 'stremio://'
+            const stremioInstallUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
+            
+            // Zet de werkende link op de knop
             installButton.setAttribute('href', stremioInstallUrl);
             
-            // Zet de URL in het input-veld
+            // Zet de HTTP URL in het input-veld voor de handmatige methode
             manifestUrlInput.value = manifestUrl;
             
             // Voeg kopieer-functionaliteit toe
