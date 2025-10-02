@@ -1,3 +1,5 @@
+const cloudscraper = require('cloudscraper');
+
 // --- HELPER FUNCTIES ---
 
 function extractSpecialSrcFromScript(htmlContent) {
@@ -49,7 +51,7 @@ module.exports = async (req, res) => {
     let previousUrl = null;
     let foundFilename = null;
 
-    console.log(`[RESOLVER FASE 1] Starting chain for ${targetUrl}`);
+    console.log(`[RESOLVER FASE 1] Starting chain for ${targetUrl} using Cloudscraper`);
 
     try {
         for (let step = 1; step <= MAX_REDIRECTS; step++) {
@@ -59,30 +61,29 @@ module.exports = async (req, res) => {
             }
             visitedUrls.add(currentUrl);
 
-            // --- AANGEPASTE HEADER LOGICA ---
             const finalHeaders = { ...headers };
-            // Stuur alleen een Referer mee als we een iframe volgen (dus niet bij de eerste request).
-            // `previousUrl` wordt pas na de eerste succesvolle fetch ingesteld.
             if (previousUrl) {
                 finalHeaders['Referer'] = previousUrl;
             }
-            delete finalHeaders['host']; 
-            // --- EINDE AANGEPASTE LOGICA ---
+            delete finalHeaders['host'];
 
-            const response = await fetch(currentUrl, {
+            // --- GEBRUIK CLOUDSCRAPER IN PLAATS VAN FETCH ---
+            const options = {
+                uri: currentUrl,
                 headers: finalHeaders,
-                signal: AbortSignal.timeout(10000)
-            });
+                timeout: 15000 // Geef het wat meer tijd om de challenge op te lossen
+            };
 
-            if (!response.ok) {
-                console.log(`[RESOLVER FASE 1] Fetch failed for ${currentUrl} with status ${response.status}`);
-                // Probeer de body te lezen voor meer info, als die er is
-                const errorBody = await response.text().catch(() => 'No response body');
-                console.log(`[RESOLVER FASE 1] Response Body: ${errorBody.substring(0, 200)}`);
-                break;
+            let html;
+            try {
+                 // cloudscraper.get() retourneert de HTML body direct
+                 html = await cloudscraper.get(options);
+            } catch (error) {
+                console.log(`[RESOLVER FASE 1] Cloudscraper failed for ${currentUrl} with status ${error.statusCode || 'N/A'}`);
+                console.log(`[RESOLVER FASE 1] Error message: ${error.message}`);
+                break; // Stop de loop als scraper faalt
             }
-
-            const html = await response.text();
+            // --- EINDE CLOUDSCRAPER LOGICA ---
 
             if (!foundFilename) {
                 foundFilename = extractFilename(html);
@@ -115,7 +116,7 @@ module.exports = async (req, res) => {
         return res.status(404).json({ error: 'Prorcp URL not found in chain' });
 
     } catch (error) {
-        console.error(`[RESOLVER FASE 1 ERROR] for ${currentUrl}:`, error.message);
+        console.error(`[RESOLVER FASE 1 FATAL ERROR] for ${currentUrl}:`, error.message);
         return res.status(502).json({ error: 'Proxy fetch failed', details: error.message });
     }
 };
