@@ -2,7 +2,11 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/:id?/manifest.json",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/:id?/stream/:type/:id.json",
       "destination": "/api/index.js"
     }
   ]
