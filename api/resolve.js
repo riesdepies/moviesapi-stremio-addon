@@ -1,13 +1,9 @@
 // --- HELPER FUNCTIES ---
 
-/**
- * NIEUW: Zoekt specifiek naar het /prorcp/ pad binnen een JavaScript-blok.
- * Dit is voor iframes die dynamisch worden aangemaakt, zoals: src: '/prorcp/...'
- * @param {string} htmlContent De volledige HTML-broncode.
- * @returns {string|null} De gevonden URL (bijv. '/prorcp/...') of null.
- */
-function extractProrcpSrcFromScript(htmlContent) {
-    const regex = /['"](\/prorcp\/[^'"]+)['"]/; // Zoekt naar '/prorcp/...' tussen quotes
+function extractSpecialSrcFromScript(htmlContent) {
+    // Deze regex vindt src: '...', src: "...", .src = '...', .src = "..." etc. 
+    // en is flexibel voor /rcp/ en /prorcp/
+    const regex = /(?:src\s*:\s*|\.src\s*=\s*)['"]([^'"]*?\/(?:p?rcp)\/[^'"]*?)['"]/;
     const match = htmlContent.match(regex);
     return match ? match[1] : null;
 }
@@ -20,22 +16,7 @@ function extractFilename(htmlContent) {
             const decodedString = atob(match[1]);
             const pathParts = decodedString.split('/');
             return pathParts[pathParts.length - 1];
-        } catch (e) {
-            return null;
-        }
-    }
-    return null;
-}
-
-function findJsIframeSrc(html) {
-    const combinedRegex = /(?:src:\s*|\.src\s*=\s*)["']([^"']+)["']/g;
-    let match;
-    while ((match = combinedRegex.exec(html)) !== null) {
-        const url = match[1];
-        if (url) {
-            const path = url.split('?')[0].split('#')[0];
-            if (!path.endsWith('.js')) return url;
-        }
+        } catch (e) { return null; }
     }
     return null;
 }
@@ -49,7 +30,6 @@ function findHtmlIframeSrc(html) {
 // --- HOOFDFUNCTIE ---
 
 module.exports = async (req, res) => {
-    // CORS headers voor directe aanroepingen (bijv. testen)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -76,7 +56,10 @@ module.exports = async (req, res) => {
 
     try {
         for (let step = 1; step <= MAX_REDIRECTS; step++) {
-            if (visitedUrls.has(currentUrl)) break;
+            if (visitedUrls.has(currentUrl)) {
+                console.log(`[RESOLVER FASE 1] Loop detected, stopping chain at ${currentUrl}`);
+                break;
+            }
             visitedUrls.add(currentUrl);
 
             const finalHeaders = { ...headers, 'Referer': previousUrl || initialReferer };
@@ -87,7 +70,10 @@ module.exports = async (req, res) => {
                 signal: AbortSignal.timeout(10000)
             });
 
-            if (!response.ok) break;
+            if (!response.ok) {
+                console.log(`[RESOLVER FASE 1] Fetch failed for ${currentUrl} with status ${response.status}`);
+                break;
+            }
 
             const html = await response.text();
 
@@ -95,28 +81,26 @@ module.exports = async (req, res) => {
                 foundFilename = extractFilename(html);
             }
 
-            // --- AANGEPASTE LOGICA ---
-            // 1. Probeer de nieuwe, specifieke methode eerst.
-            let nextIframeSrc = extractProrcpSrcFromScript(html);
-
-            // 2. Als dat niet lukt, probeer de oude, algemenere methodes.
-            if (!nextIframeSrc) {
-                nextIframeSrc = findHtmlIframeSrc(html) || findJsIframeSrc(html);
-            }
-            // --- EINDE AANGEPASTE LOGICA ---
+            // Gebruik alle methodes om de VOLGENDE iframe src te vinden
+            const nextIframeSrc = findHtmlIframeSrc(html) || extractSpecialSrcFromScript(html);
 
             if (nextIframeSrc) {
                 const nextUrl = new URL(nextIframeSrc, currentUrl).href;
-                console.log(`[RESOLVER FASE 1] Found next iframe: ${nextUrl}`);
+                console.log(`[RESOLVER FASE 1] Step ${step}: Found next iframe -> ${nextUrl}`);
                 
+                // --- GECORRIGEERDE LOGICA ---
+                // Stop ALLEEN als de gevonden URL '/prorcp/' bevat.
                 if (nextUrl.includes('/prorcp/')) {
-                    console.log(`[RESOLVER FASE 1] Success, found Prorcp URL: ${nextUrl}`);
+                    console.log(`[RESOLVER FASE 1] Success! Found final Prorcp URL: ${nextUrl}`);
                     return res.status(200).json({
                         prorcpUrl: nextUrl,
                         sourceDomain: sourceDomain,
                         filename: foundFilename
                     });
                 }
+                // --- EINDE GECORRIGEERDE LOGICA ---
+
+                // Als het niet de prorcp link is, ga door met de volgende URL in de keten.
                 previousUrl = currentUrl;
                 currentUrl = nextUrl;
             } else {
@@ -125,11 +109,11 @@ module.exports = async (req, res) => {
             }
         }
 
-        console.log(`[RESOLVER FASE 1] Chain finished without Prorcp URL for ${targetUrl}`);
-        return res.status(404).json({ error: 'Prorcp URL not found' });
+        console.log(`[RESOLVER FASE 1] Chain finished without finding a /prorcp/ URL for ${targetUrl}`);
+        return res.status(404).json({ error: 'Prorcp URL not found in chain' });
 
     } catch (error) {
-        console.error(`[RESOLVER FASE 1 ERROR]`, error.message);
+        console.error(`[RESOLVER FASE 1 ERROR] for ${currentUrl}:`, error.message);
         return res.status(502).json({ error: 'Proxy fetch failed', details: error.message });
     }
 };
