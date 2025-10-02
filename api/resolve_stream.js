@@ -1,108 +1,119 @@
-// --- BROWSERPROFIELEN EN HEADERS ---
-const BROWSER_PROFILES = [
-    {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"'
-    },
-    // ... (andere profielen)
-];
+// --- HELPER FUNCTIES ---
 
-function getRandomBrowserProfile() {
-    return BROWSER_PROFILES[Math.floor(Math.random() * BROWSER_PROFILES.length)];
+function extractFilename(htmlContent) {
+    const regex = /atob\s*\(\s*['"]([^'"]+)['"]\s*\)/;
+    const match = htmlContent.match(regex);
+
+    if (match && match[1]) {
+        try {
+            const decodedString = atob(match[1]);
+            const pathParts = decodedString.split('/');
+            return pathParts[pathParts.length - 1];
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
 }
 
-const COMMON_HEADERS = {
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q-0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Site': 'cross-site',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Dest': 'iframe',
-};
+function findJsIframeSrc(html) {
+    const combinedRegex = /(?:src:\s*|\.src\s*=\s*)["']([^"']+)["']/g;
+    let match;
+    while ((match = combinedRegex.exec(html)) !== null) {
+        const url = match[1];
+        if (url) {
+            const path = url.split('?')[0].split('#')[0];
+            if (!path.endsWith('.js')) return url;
+        }
+    }
+    return null;
+}
 
-// --- HELPER FUNCTIES (van je oude resolve.js) ---
-function extractM3u8Url(htmlContent) {
-    const regex = /(https?:\/\/[^\s'"]+?\.m3u8[^\s'"]*)/;
-    const match = htmlContent.match(regex);
+function findHtmlIframeSrc(html) {
+    const staticRegex = /<iframe[^>]+src\s*=\s*["']([^"']+)["']/;
+    const match = html.match(staticRegex);
     return match ? match[1] : null;
 }
-function findJsIframeSrc(html) { /* ... implementatie ... */ }
-function findHtmlIframeSrc(html) { /* ... implementatie ... */ }
 
+// --- HOOFDFUNCTIE ---
 
-// --- DE RESOLVER SERVERLESS FUNCTIE ---
 module.exports = async (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    if (req.method !== 'POST') {
+        res.setHeader('Allow', 'POST');
+        return res.status(405).json({ error: 'Method Not Allowed' });
+    }
 
-    if (req.method === 'OPTIONS') return res.status(204).end();
-    
+    const { targetUrl, sourceDomain, headers } = req.body;
+    if (!targetUrl || !sourceDomain || !headers) {
+        return res.status(400).json({ error: 'Bad Request' });
+    }
+
+    const MAX_REDIRECTS = 5;
+    const visitedUrls = new Set();
+    let currentUrl = targetUrl;
+    let previousUrl = null;
+    const initialReferer = `https://${sourceDomain}/`;
+    let foundFilename = null;
+
+    console.log(`[RESOLVER FASE 1] Starting chain for ${targetUrl}`);
+
     try {
-        const { data } = req.query;
-        if (!data) {
-            return res.status(400).send("Bad Request: 'data' parameter is missing.");
-        }
-
-        const decodedData = JSON.parse(Buffer.from(data, 'base64').toString('ascii'));
-        const { type, id } = decodedData;
-        const [imdbId, season, episode] = id.split(':');
-
-        // --- BOUW DE INITIALE URL ---
-        const MOVIESAPI_DOMAIN = "cdn.moviesapi.club";
-        const apiType = type === 'series' ? 'tv' : 'movie';
-        let targetUrl;
-
-        if (apiType === 'tv' && season && episode) {
-            targetUrl = `https://${MOVIESAPI_DOMAIN}/embed/${apiType}/${imdbId}?s=${season}&e=${episode}`;
-        } else {
-            targetUrl = `https://${MOVIESAPI_DOMAIN}/embed/${apiType}/${imdbId}`;
-        }
-        console.log(`[RESOLVER] Starting chain for ${targetUrl}`);
-
-        // --- SCRAPE LOGICA (uit je oude /api/resolve) ---
-        let currentUrl = targetUrl;
-        let previousUrl = `https://${MOVIESAPI_DOMAIN}/`;
-        const visitedUrls = new Set();
-        const MAX_REDIRECTS = 5;
-
         for (let step = 1; step <= MAX_REDIRECTS; step++) {
             if (visitedUrls.has(currentUrl)) break;
             visitedUrls.add(currentUrl);
-
-            const requestHeaders = { ...COMMON_HEADERS, ...getRandomBrowserProfile(), 'Referer': previousUrl };
-            delete requestHeaders['host'];
             
-            const response = await fetch(currentUrl, { headers: requestHeaders, signal: AbortSignal.timeout(15000) });
+            // Check of de huidige URL al de prorcp link is
+            if (currentUrl.includes('/prorcp/')) {
+                 console.log(`[RESOLVER FASE 1] Found Prorcp URL directly: ${currentUrl}`);
+                 return res.status(200).json({
+                     prorcpUrl: currentUrl,
+                     sourceDomain: sourceDomain,
+                     filename: foundFilename
+                 });
+            }
+
+            const finalHeaders = { ...headers, 'Referer': previousUrl || initialReferer };
+            delete finalHeaders['host'];
+
+            const response = await fetch(currentUrl, {
+                headers: finalHeaders,
+                signal: AbortSignal.timeout(10000)
+            });
+
             if (!response.ok) break;
-            
-            const html = await response.text();
-            const m3u8Url = extractM3u8Url(html);
 
-            if (m3u8Url) {
-                console.log(`[SUCCESS] Found M3U8: ${m3u8Url}. Redirecting player.`);
-                // STUUR EEN REDIRECT NAAR DE SPELER
-                res.redirect(302, m3u8Url);
-                return; // Stop de executie
+            const html = await response.text();
+
+            if (!foundFilename) {
+                foundFilename = extractFilename(html);
             }
 
             const nextIframeSrc = findHtmlIframeSrc(html) || findJsIframeSrc(html);
             if (nextIframeSrc) {
+                const nextUrl = new URL(nextIframeSrc, currentUrl).href;
+                console.log(`[RESOLVER FASE 1] Found next iframe: ${nextUrl}`);
+                
+                // Belangrijkste wijziging: check op /prorcp/ en stop dan
+                if (nextUrl.includes('/prorcp/')) {
+                    console.log(`[RESOLVER FASE 1] Success, found Prorcp URL: ${nextUrl}`);
+                    return res.status(200).json({
+                        prorcpUrl: nextUrl,
+                        sourceDomain: sourceDomain,
+                        filename: foundFilename
+                    });
+                }
                 previousUrl = currentUrl;
-                currentUrl = new URL(nextIframeSrc, currentUrl).href;
-                console.log(`[RESOLVER] Found next iframe, redirecting to: ${currentUrl}`);
+                currentUrl = nextUrl;
             } else {
                 break;
             }
         }
-        
-        console.log(`[FAILURE] Chain finished without result for ${targetUrl}`);
-        return res.status(404).send("Stream not found after resolving.");
+
+        console.log(`[RESOLVER FASE 1] Chain finished without Prorcp URL for ${targetUrl}`);
+        return res.status(404).json({ error: 'Prorcp URL not found' });
 
     } catch (error) {
-        console.error(`[RESOLVER ERROR]`, error.message);
-        return res.status(500).send("Internal Server Error");
+        console.error(`[RESOLVER FASE 1 ERROR]`, error.message);
+        return res.status(502).json({ error: 'Proxy fetch failed', details: error.message });
     }
 };
