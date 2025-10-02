@@ -2,6 +2,10 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/api/resolve_stream",
+      "destination": "/api/resolve_stream.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "/api/index.js"
     }
