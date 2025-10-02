@@ -9,7 +9,7 @@ const manifest = {
     "id": "community.nepflix2.ries",
     "version": "2.1.2",
     "name": "Nepflix 2", // Naam aangepast
-    "description": "HLS streams van moviesapi.club via een 2-fase proxy",
+    "description": "HLS streams van moviesapi.club",
     "icon": iconUrl,
     "catalogs": [],
     "resources": ["stream"],
