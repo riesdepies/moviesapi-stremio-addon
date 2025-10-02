@@ -4,10 +4,10 @@ const { addonBuilder } = require("stremio-addon-sdk");
 const host = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://127.0.0.1:3000';
 const iconUrl = `${host}/icon.png`;
 
-// --- MANIFEST (VERSIE 2.1.0) ---
+// --- MANIFEST (VERSIE 2.1.1) ---
 const manifest = {
     "id": "community.nepflix2.ries",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "name": "Nepflix 2 (Proxy)",
     "description": "HLS streams van moviesapi.club via een 2-fase proxy",
     "icon": iconUrl,
@@ -103,14 +103,13 @@ builder.defineStreamHandler(async ({ type, id }) => {
     const streamSource = await getProrcpUrl(type, imdbId, season, episode);
 
     if (streamSource && streamSource.prorcpUrl) {
-        // Bouw de proxy URL naar ons eigen /api/play eindpunt
-        const proxyUrl = new URL(`${host}/api/play`);
-        proxyUrl.searchParams.set('source', streamSource.prorcpUrl);
-        proxyUrl.searchParams.set('imdbid', id); // Stuur de volledige ID mee
+        // WIJZIGING: Gebruik encodeURIComponent voor robuustheid
+        const encodedSourceUrl = encodeURIComponent(streamSource.prorcpUrl);
+        const proxyUrl = `${host}/api/play?source=${encodedSourceUrl}&imdbid=${id}`;
 
         const title = streamSource.filename || `MoviesAPI`;
         const stream = {
-            url: proxyUrl.href,
+            url: proxyUrl,
             title: title
         };
         return Promise.resolve({ streams: [stream] });
