@@ -1,13 +1,11 @@
 const { parse } = require('url');
 
-// --- HELPER FUNCTIE ---
 function extractM3u8Url(htmlContent) {
     const regex = /(https?:\/\/[^\s'"]+?\.m3u8[^\s'"]*)/;
     const match = htmlContent.match(regex);
     return match ? match[1] : null;
 }
 
-// --- BROWSERPROFIELEN ---
 const BROWSER_PROFILES = [
     {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -21,10 +19,19 @@ function getRandomBrowserProfile() {
     return BROWSER_PROFILES[Math.floor(Math.random() * BROWSER_PROFILES.length)];
 }
 
-// --- HOOFDFUNCTIE ---
 module.exports = async (req, res) => {
+    // Voeg CORS headers toe aan alle responses
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    
+    if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+    }
+
     const { query } = parse(req.url, true);
-    const sourceUrl = query.source;
+    // WIJZIGING: sourceUrl hoeft niet gedecodeerd te worden, Node.js doet dit automatisch.
+    const sourceUrl = query.source; 
     const imdbIdFull = query.imdbid;
 
     if (!sourceUrl || !imdbIdFull) {
@@ -34,15 +41,16 @@ module.exports = async (req, res) => {
     
     console.log(`[FASE 2] Starting final resolve for: ${sourceUrl}`);
     
-    // Bepaal referer op basis van de imdb-id
     const [imdbId, season, episode] = imdbIdFull.split(':');
     const type = (season && episode) ? 'tv' : 'movie';
     const referer = `https://cdn.moviesapi.club/embed/${type}/${imdbId}`;
 
     const headers = {
         ...getRandomBrowserProfile(),
-        'Accept': '*/*',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Referer': referer,
+        'Upgrade-Insecure-Requests': '1',
         'Sec-Fetch-Site': 'cross-site',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Dest': 'iframe',
