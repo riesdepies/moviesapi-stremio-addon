@@ -1,7 +1,14 @@
 const { parse } = require('url');
 
+/**
+ * VERBETERD: Haalt de M3U8 URL op.
+ * Zoekt nu specifiek naar het `file: '...'` patroon binnen een Playerjs object.
+ * @param {string} htmlContent De volledige HTML-broncode.
+ * @returns {string|null} De gevonden M3U8 URL of null.
+ */
 function extractM3u8Url(htmlContent) {
-    const regex = /(https?:\/\/[^\s'"]+?\.m3u8[^\s'"]*)/;
+    // Regex zoekt naar: file, optionele spaties, :, optionele spaties, quote, (de URL met .m3u8), sluitende quote
+    const regex = /file\s*:\s*['"]([^'"]+?\.m3u8[^'"]*?)['"]/;
     const match = htmlContent.match(regex);
     return match ? match[1] : null;
 }
@@ -20,7 +27,6 @@ function getRandomBrowserProfile() {
 }
 
 module.exports = async (req, res) => {
-    // Voeg CORS headers toe aan alle responses
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
@@ -30,7 +36,6 @@ module.exports = async (req, res) => {
     }
 
     const { query } = parse(req.url, true);
-    // WIJZIGING: sourceUrl hoeft niet gedecodeerd te worden, Node.js doet dit automatisch.
     const sourceUrl = query.source; 
     const imdbIdFull = query.imdbid;
 
@@ -43,20 +48,22 @@ module.exports = async (req, res) => {
     
     const [imdbId, season, episode] = imdbIdFull.split(':');
     const type = (season && episode) ? 'tv' : 'movie';
-    const referer = `https://cdn.moviesapi.club/embed/${type}/${imdbId}`;
+    // De referer voor de prorcp pagina is waarschijnlijk de rcp pagina, maar de embed pagina werkt vaak ook.
+    const referer = `https://${new URL(sourceUrl).hostname}/`;
 
     const headers = {
         ...getRandomBrowserProfile(),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'Referer': referer,
         'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Site': 'cross-site',
+        'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Dest': 'iframe',
     };
 
     try {
+        // De prorcp pagina heeft waarschijnlijk geen Cloudflare, dus fetch is hier prima.
         const response = await fetch(sourceUrl, { headers: headers, signal: AbortSignal.timeout(10000) });
         if (!response.ok) {
             throw new Error(`Fetch failed with status ${response.status}`);
