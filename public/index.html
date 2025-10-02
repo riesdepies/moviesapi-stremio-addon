@@ -6,9 +6,9 @@
     <title>Nepflix 2 Stremio Addon</title>
     <style>
         :root {
-            --primary-color: #e50914; /* Netflix Red */
-            --background-color: #141414; /* Dark Background */
-            --text-color: #f5f5f1; /* Off-white */
+            --primary-color: #e50914;
+            --background-color: #141414;
+            --text-color: #f5f5f1;
             --container-color: #222;
         }
         body {
@@ -16,7 +16,7 @@
             background-color: var(--background-color);
             color: var(--text-color);
             margin: 0;
-            padding: 0;
+            padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -36,12 +36,10 @@
             font-weight: bold;
             color: var(--primary-color);
             margin-bottom: 20px;
-            letter-spacing: -2px;
         }
         p {
             font-size: 1.1rem;
             line-height: 1.6;
-            margin-bottom: 30px;
         }
         .install-button {
             display: inline-block;
@@ -55,49 +53,94 @@
             border: none;
             cursor: pointer;
             transition: background-color 0.2s ease, transform 0.2s ease;
+            margin-bottom: 25px;
         }
         .install-button:hover {
             background-color: #f6121d;
             transform: scale(1.05);
         }
-        .footer {
-            margin-top: 30px;
-            font-size: 0.8rem;
-            color: #888;
+        .manual-install {
+            border-top: 1px solid #444;
+            padding-top: 25px;
+            margin-top: 25px;
         }
-        /* Mobile adjustments */
+        .manual-install h3 {
+            margin-top: 0;
+            color: #ccc;
+        }
+        .url-container {
+            display: flex;
+            background-color: #111;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        .url-input {
+            flex-grow: 1;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            padding: 12px;
+            font-size: 0.9rem;
+        }
+        .copy-button {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 0 15px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .copy-button:hover {
+            background-color: #444;
+        }
+        .copy-button:active {
+            background-color: var(--primary-color);
+        }
         @media (max-width: 600px) {
-            .container {
-                padding: 25px;
-            }
-            .logo {
-                font-size: 2.5rem;
-            }
-            p {
-                font-size: 1rem;
-            }
-            .install-button {
-                padding: 12px 25px;
-                font-size: 1.1rem;
-            }
+            .container { padding: 25px; }
+            .logo { font-size: 2.5rem; }
+            p { font-size: 1rem; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="logo">Nepflix 2</div>
-        <p>Deze addon levert HLS streams van moviesapi.club. Het maakt gebruik van een twee-staps systeem voor snellere laadtijden.</p>
+        <p>Klik op de knop hieronder om de addon direct te installeren.</p>
         <a href="#" id="install-link" class="install-button">Installeer Addon</a>
-        <div class="footer">
-            <p>Klik op de knop om de addon aan Stremio toe te voegen.</p>
+        
+        <div class="manual-install">
+            <h3>Werkt de knop niet?</h3>
+            <p>Kopieer de onderstaande URL en plak deze in de zoekbalk van Stremio om de addon handmatig te installeren.</p>
+            <div class="url-container">
+                <input type="text" id="manifest-url" class="url-input" readonly>
+                <button id="copy-button" class="copy-button">Kopieer</button>
+            </div>
         </div>
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const installButton = document.getElementById('install-link');
+            const manifestUrlInput = document.getElementById('manifest-url');
+            const copyButton = document.getElementById('copy-button');
+            
             const manifestUrl = window.location.origin + '/manifest.json';
             const stremioInstallUrl = 'stremio://install-addon?manifest_url=' + encodeURIComponent(manifestUrl);
+            
+            // Zet de link op de knop
             installButton.setAttribute('href', stremioInstallUrl);
+            
+            // Zet de URL in het input-veld
+            manifestUrlInput.value = manifestUrl;
+            
+            // Voeg kopieer-functionaliteit toe
+            copyButton.addEventListener('click', function() {
+                manifestUrlInput.select();
+                document.execCommand('copy');
+                copyButton.textContent = 'Gekopieerd!';
+                setTimeout(() => { copyButton.textContent = 'Kopieer'; }, 2000);
+            });
         });
     </script>
 </body>
