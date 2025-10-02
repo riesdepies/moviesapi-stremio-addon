@@ -2,11 +2,29 @@ const cloudscraper = require('cloudscraper');
 
 // --- HELPER FUNCTIES ---
 
-function extractSpecialSrcFromScript(htmlContent) {
-    const regex = /(?:src\s*:\s*|\.src\s*=\s*)['"]([^'"]*?\/(?:p?rcp)\/[^'"]*?)['"]/;
-    const match = htmlContent.match(regex);
-    return match ? match[1] : null;
+/**
+ * NIEUW & VERBETERD: Zoekt naar dynamisch gegenereerde iframe bronnen.
+ * Dit is voor iframes die worden aangemaakt met JavaScript/jQuery, zoals:
+ * - $('<iframe>', { src: '/prorcp/...' })
+ * - .src = '/prorcp/...'
+ * - src: '/prorcp/...'
+ * @param {string} htmlContent De volledige HTML-broncode.
+ * @returns {string|null} De gevonden URL of null.
+ */
+function findDynamicIframeSrc(htmlContent) {
+    // Patroon 1: Specifiek voor jQuery constructor $('<iframe>', { ... })
+    const jqueryRegex = /\$\(['"]<iframe>['"],\s*{[^}]*?src:\s*['"]([^'"]+)['"]/;
+    let match = htmlContent.match(jqueryRegex);
+    if (match && match[1]) return match[1];
+
+    // Patroon 2: Algemener voor .src = '...' of src: '...'
+    const genericJsRegex = /(?:src\s*[:=]\s*)['"]([^'"]*?\/(?:p?rcp)\/[^'"]*?)['"]/;
+    match = htmlContent.match(genericJsRegex);
+    if (match && match[1]) return match[1];
+
+    return null;
 }
+
 
 function extractFilename(htmlContent) {
     const regex = /atob\s*\(\s*['"]([^'"]+)['"]\s*\)/;
@@ -67,29 +85,22 @@ module.exports = async (req, res) => {
             }
             delete finalHeaders['host'];
 
-            // --- GEBRUIK CLOUDSCRAPER IN PLAATS VAN FETCH ---
-            const options = {
-                uri: currentUrl,
-                headers: finalHeaders,
-                timeout: 15000 // Geef het wat meer tijd om de challenge op te lossen
-            };
+            const options = { uri: currentUrl, headers: finalHeaders, timeout: 15000 };
 
             let html;
             try {
-                 // cloudscraper.get() retourneert de HTML body direct
                  html = await cloudscraper.get(options);
             } catch (error) {
                 console.log(`[RESOLVER FASE 1] Cloudscraper failed for ${currentUrl} with status ${error.statusCode || 'N/A'}`);
-                console.log(`[RESOLVER FASE 1] Error message: ${error.message}`);
-                break; // Stop de loop als scraper faalt
+                break;
             }
-            // --- EINDE CLOUDSCRAPER LOGICA ---
 
             if (!foundFilename) {
                 foundFilename = extractFilename(html);
             }
 
-            const nextIframeSrc = findHtmlIframeSrc(html) || extractSpecialSrcFromScript(html);
+            // --- AANGEPASTE LOGICA: Gebruik de slimmere scraper ---
+            const nextIframeSrc = findHtmlIframeSrc(html) || findDynamicIframeSrc(html);
 
             if (nextIframeSrc) {
                 const nextUrl = new URL(nextIframeSrc, currentUrl).href;
