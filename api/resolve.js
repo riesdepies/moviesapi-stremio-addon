@@ -1,9 +1,20 @@
 // --- HELPER FUNCTIES ---
 
+/**
+ * NIEUW: Zoekt specifiek naar het /prorcp/ pad binnen een JavaScript-blok.
+ * Dit is voor iframes die dynamisch worden aangemaakt, zoals: src: '/prorcp/...'
+ * @param {string} htmlContent De volledige HTML-broncode.
+ * @returns {string|null} De gevonden URL (bijv. '/prorcp/...') of null.
+ */
+function extractProrcpSrcFromScript(htmlContent) {
+    const regex = /['"](\/prorcp\/[^'"]+)['"]/; // Zoekt naar '/prorcp/...' tussen quotes
+    const match = htmlContent.match(regex);
+    return match ? match[1] : null;
+}
+
 function extractFilename(htmlContent) {
     const regex = /atob\s*\(\s*['"]([^'"]+)['"]\s*\)/;
     const match = htmlContent.match(regex);
-
     if (match && match[1]) {
         try {
             const decodedString = atob(match[1]);
@@ -38,6 +49,12 @@ function findHtmlIframeSrc(html) {
 // --- HOOFDFUNCTIE ---
 
 module.exports = async (req, res) => {
+    // CORS headers voor directe aanroepingen (bijv. testen)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') return res.status(204).end();
     if (req.method !== 'POST') {
         res.setHeader('Allow', 'POST');
         return res.status(405).json({ error: 'Method Not Allowed' });
@@ -61,16 +78,6 @@ module.exports = async (req, res) => {
         for (let step = 1; step <= MAX_REDIRECTS; step++) {
             if (visitedUrls.has(currentUrl)) break;
             visitedUrls.add(currentUrl);
-            
-            // Check of de huidige URL al de prorcp link is
-            if (currentUrl.includes('/prorcp/')) {
-                 console.log(`[RESOLVER FASE 1] Found Prorcp URL directly: ${currentUrl}`);
-                 return res.status(200).json({
-                     prorcpUrl: currentUrl,
-                     sourceDomain: sourceDomain,
-                     filename: foundFilename
-                 });
-            }
 
             const finalHeaders = { ...headers, 'Referer': previousUrl || initialReferer };
             delete finalHeaders['host'];
@@ -88,12 +95,20 @@ module.exports = async (req, res) => {
                 foundFilename = extractFilename(html);
             }
 
-            const nextIframeSrc = findHtmlIframeSrc(html) || findJsIframeSrc(html);
+            // --- AANGEPASTE LOGICA ---
+            // 1. Probeer de nieuwe, specifieke methode eerst.
+            let nextIframeSrc = extractProrcpSrcFromScript(html);
+
+            // 2. Als dat niet lukt, probeer de oude, algemenere methodes.
+            if (!nextIframeSrc) {
+                nextIframeSrc = findHtmlIframeSrc(html) || findJsIframeSrc(html);
+            }
+            // --- EINDE AANGEPASTE LOGICA ---
+
             if (nextIframeSrc) {
                 const nextUrl = new URL(nextIframeSrc, currentUrl).href;
                 console.log(`[RESOLVER FASE 1] Found next iframe: ${nextUrl}`);
                 
-                // Belangrijkste wijziging: check op /prorcp/ en stop dan
                 if (nextUrl.includes('/prorcp/')) {
                     console.log(`[RESOLVER FASE 1] Success, found Prorcp URL: ${nextUrl}`);
                     return res.status(200).json({
@@ -105,6 +120,7 @@ module.exports = async (req, res) => {
                 previousUrl = currentUrl;
                 currentUrl = nextUrl;
             } else {
+                console.log(`[RESOLVER FASE 1] No next iframe found on ${currentUrl}`);
                 break;
             }
         }
