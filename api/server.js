@@ -24,15 +24,18 @@ module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(204).end();
 
-    const { url } = req;
-    const parts = url.split('/').filter(Boolean);
+    // --- DIT IS DE CORRECTIE ---
+    // We parsen de URL hier één keer en gebruiken 'pathname' voor de routing.
+    const { pathname, query } = parse(req.url, true);
+    const parts = pathname.split('/').filter(Boolean);
     const mode = parts[0];
+    const action = parts[1];
+    // --- EINDE CORRECTIE ---
 
     // --- PROXY HANDLERS ---
-    if (mode && parts[1] === 'play') {
-        const { query } = parse(req.url, true);
-
+    if (mode && action === 'play') {
         if (mode === 'no-prefetch' && query.imdbid) {
+            console.log(`[PROXY] no-prefetch: Ontvangen imdbid ${query.imdbid}`);
             const [imdbId, season, episode] = query.imdbid.split(':');
             const type = (season && episode) ? 'series' : 'movie';
             const source = await getProrcpUrl(type, imdbId, season, episode);
@@ -44,6 +47,7 @@ module.exports = async (req, res) => {
                 }
             }
         } else if (mode === 'prefetch-1' && query.prorcp) {
+            console.log(`[PROXY] prefetch-1: Ontvangen prorcp URL`);
             const m3u8Url = await getM3u8Url(query.prorcp);
             if (m3u8Url) {
                 res.writeHead(302, { 'Location': m3u8Url });
@@ -51,6 +55,7 @@ module.exports = async (req, res) => {
             }
         }
         
+        console.error(`[PROXY] Fout: Stream niet gevonden voor modus ${mode} met query`, query);
         res.statusCode = 404;
         return res.end('Stream niet gevonden.');
     }
@@ -62,14 +67,15 @@ module.exports = async (req, res) => {
         req.url = req.url.replace(`/${mode}`, '') || '/';
         router(req, res, () => {
             res.statusCode = 404;
-            res.end('Not Found');
+            res.end('Not Found in Stremio router');
         });
     } else {
         // Fallback voor onbekende URLs (bijv. icoon, of de hoofdpagina)
-        if (url === '/icon.png') {
+        if (req.url === '/icon.png' || req.url.startsWith('/favicon')) {
              // Handle icon serving if you have one in /public
+             return res.status(204).end(); // Stuur no content terug als er geen icoon is
         }
         res.statusCode = 404;
-        res.end('Not Found. Check the URL for a valid mode.');
+        res.end(`Not Found. Geen geldige modus of actie in URL: ${pathname}`);
     }
 };
