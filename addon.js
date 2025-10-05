@@ -42,10 +42,12 @@ function createAddon(mode, host) {
 
         let stream = null;
 
+        // --- TITELS AANGEPAST ---
         switch (mode) {
             case 'no-prefetch': {
                 const proxyUrl = `${host}/${mode}/play?imdbid=${id}`;
-                stream = { url: proxyUrl, title: "▶️ Nepflix (No Prefetch)" };
+                // Titel is nu cleaner, zonder emoji.
+                stream = { url: proxyUrl, title: "[NP] Nepflix" };
                 break;
             }
             case 'prefetch-1': {
@@ -53,7 +55,8 @@ function createAddon(mode, host) {
                 if (source && source.prorcpUrl) {
                     const encodedUrl = encodeURIComponent(source.prorcpUrl);
                     const proxyUrl = `${host}/${mode}/play?prorcp=${encodedUrl}`;
-                    stream = { url: proxyUrl, title: `▶️ ${source.filename || 'Nepflix (Prefetch 1)'}` };
+                    // Titel is nu cleaner, met [P1] als prefix.
+                    stream = { url: proxyUrl, title: `[P1] ${source.filename || 'Nepflix'}` };
                 }
                 break;
             }
@@ -62,7 +65,8 @@ function createAddon(mode, host) {
                 if (source && source.prorcpUrl) {
                     const m3u8Url = await getM3u8Url(source.prorcpUrl);
                     if (m3u8Url) {
-                        stream = { url: m3u8Url, title: `⚡ ${source.filename || 'Nepflix (Full Prefetch)'}` };
+                        // Titel is nu cleaner, met [FP] als prefix.
+                        stream = { url: m3u8Url, title: `[FP] ${source.filename || 'Nepflix'}` };
                     }
                 }
                 break;
