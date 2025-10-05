@@ -29,7 +29,7 @@
             border-radius: 12px;
             max-width: 800px;
             width: 90%;
-            box-shadow: 0 10px M30px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
         .logo {
             font-size: 3rem;
@@ -162,15 +162,16 @@
                 `;
                 container.insertAdjacentHTML('beforeend', cardHtml);
             });
-
+            
+            // Event listener ALLEEN voor de kopieer-knoppen
             container.addEventListener('click', function(e) {
-                if (e.target.classList.contains('copy-button')) {
-                    const button = e.target;
-                    const input = button.previousElementSibling;
+                const copyButton = e.target.closest('.copy-button');
+                if (copyButton) {
+                    const input = copyButton.previousElementSibling;
                     input.select();
                     document.execCommand('copy');
-                    button.textContent = 'Gekopieerd!';
-                    setTimeout(() => { button.textContent = 'Kopieer'; }, 2000);
+                    copyButton.textContent = 'Gekopieerd!';
+                    setTimeout(() => { copyButton.textContent = 'Kopieer'; }, 2000);
                 }
             });
         });
