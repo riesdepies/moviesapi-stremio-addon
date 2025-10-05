@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nepflix 2 Stremio Addon</title>
+    <title>Nepflix 2 Stremio Addon Installatie</title>
     <style>
         :root {
             --primary-color: #e50914;
@@ -23,13 +23,13 @@
             min-height: 100vh;
             text-align: center;
         }
-        .container {
+        .main-container {
             background-color: var(--container-color);
             padding: 40px;
             border-radius: 12px;
-            max-width: 600px;
+            max-width: 800px;
             width: 90%;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px M30px rgba(0, 0, 0, 0.5);
         }
         .logo {
             font-size: 3rem;
@@ -37,112 +37,141 @@
             color: var(--primary-color);
             margin-bottom: 20px;
         }
-        p {
+        p.intro {
             font-size: 1.1rem;
             line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+        .option-card {
+            background-color: #333;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: left;
+            border: 1px solid #444;
+        }
+        .option-card h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+            font-size: 1.4rem;
+        }
+        .option-card p {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
         }
         .install-button {
             display: inline-block;
             background-color: var(--primary-color);
             color: white;
-            padding: 15px 30px;
-            font-size: 1.2rem;
+            padding: 12px 25px;
+            font-size: 1.1rem;
             font-weight: bold;
             text-decoration: none;
             border-radius: 8px;
             border: none;
             cursor: pointer;
             transition: background-color 0.2s ease, transform 0.2s ease;
-            margin-bottom: 25px;
         }
         .install-button:hover {
             background-color: #f6121d;
             transform: scale(1.05);
-        }
-        .manual-install {
-            border-top: 1px solid #444;
-            padding-top: 25px;
-            margin-top: 25px;
-        }
-        .manual-install h3 {
-            margin-top: 0;
-            color: #ccc;
         }
         .url-container {
             display: flex;
             background-color: #111;
             border-radius: 6px;
             overflow: hidden;
-            border: 1px solid #333;
+            border: 1px solid #555;
+            margin-top: 15px;
         }
         .url-input {
             flex-grow: 1;
             background: none;
             border: none;
-            color: var(--text-color);
-            padding: 12px;
-            font-size: 0.9rem;
+            color: #ccc;
+            padding: 10px;
+            font-size: 0.85rem;
         }
         .copy-button {
-            background-color: #333;
+            background-color: #444;
             color: white;
             border: none;
             padding: 0 15px;
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
-        .copy-button:hover {
-            background-color: #444;
-        }
-        .copy-button:active {
-            background-color: var(--primary-color);
-        }
-        @media (max-width: 600px) {
-            .container { padding: 25px; }
-            .logo { font-size: 2.5rem; }
-            p { font-size: 1rem; }
+        @media (min-width: 768px) {
+            .options-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="main-container">
         <div class="logo">Nepflix 2</div>
-        <p>Klik op de knop hieronder om de addon direct te installeren.</p>
-        <a href="#" id="install-link" class="install-button">Installeer Addon</a>
+        <p class="intro">Kies uw installatiemodus. Elke modus biedt een andere balans tussen laadsnelheid en serverbelasting.</p>
         
-        <div class="manual-install">
-            <h3>Werkt de knop niet?</h3>
-            <p>Kopieer de onderstaande URL en plak deze in de zoekbalk van Stremio om de addon handmatig te installeren.</p>
-            <div class="url-container">
-                <input type="text" id="manifest-url" class="url-input" readonly>
-                <button id="copy-button" class="copy-button">Kopieer</button>
-            </div>
+        <div class="options-grid" id="options-container">
+            <!-- Installatie-opties worden hier dynamisch ingevoegd -->
         </div>
     </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const installButton = document.getElementById('install-link');
-            const manifestUrlInput = document.getElementById('manifest-url');
-            const copyButton = document.getElementById('copy-button');
-            
-            const manifestUrl = window.location.origin + '/manifest.json';
-            
-            // --- DIT IS DE AANGEPASTE REGEL ---
-            // We creëren de 'directe' URL door 'https://' te vervangen met 'stremio://'
-            const stremioInstallUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
-            
-            // Zet de werkende link op de knop
-            installButton.setAttribute('href', stremioInstallUrl);
-            
-            // Zet de HTTP URL in het input-veld voor de handmatige methode
-            manifestUrlInput.value = manifestUrl;
-            
-            // Voeg kopieer-functionaliteit toe
-            copyButton.addEventListener('click', function() {
-                manifestUrlInput.select();
-                document.execCommand('copy');
-                copyButton.textContent = 'Gekopieerd!';
-                setTimeout(() => { copyButton.textContent = 'Kopieer'; }, 2000);
+            const options = [
+                {
+                    mode: 'noprefetch',
+                    title: 'No Prefetch',
+                    description: '<strong>Snelste laadtijd, langzaamste start.</strong> De stream wordt pas gezocht wanneer je erop klikt in Stremio. Ideaal voor lichte servers.'
+                },
+                {
+                    mode: 'prefetch1',
+                    title: 'Prefetch 1',
+                    description: '<strong>Goede balans.</strong> De eerste stap van het zoekproces wordt gedaan bij het laden. De film start sneller, maar het laden van de streamlijst duurt iets langer.'
+                },
+                {
+                    mode: 'fullprefetch',
+                    title: 'Full Prefetch',
+                    description: '<strong>Langzaamste laadtijd, snelste start.</strong> De volledige streamlink wordt direct gezocht. De film start direct, maar het kan even duren voor de streams verschijnen.'
+                }
+            ];
+
+            const container = document.getElementById('options-container');
+            const origin = window.location.origin;
+
+            options.forEach(option => {
+                const manifestUrl = `${origin}/${option.mode}/manifest.json`;
+                const stremioInstallUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
+
+                const cardHtml = `
+                    <div class="option-card" id="card-${option.mode}">
+                        <h3>Nepflix 2 (${option.title})</h3>
+                        <p>${option.description}</p>
+                        <a href="${stremioInstallUrl}" class="install-button">Installeer</a>
+                        <div class="url-container">
+                            <input type="text" value="${manifestUrl}" class="url-input" readonly>
+                            <button class="copy-button">Kopieer</button>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+            });
+
+            container.addEventListener('click', function(e) {
+                if (e.target.classList.contains('copy-button')) {
+                    const button = e.target;
+                    const input = button.previousElementSibling;
+                    input.select();
+                    document.execCommand('copy');
+                    button.textContent = 'Gekopieerd!';
+                    setTimeout(() => { button.textContent = 'Kopieer'; }, 2000);
+                }
             });
         });
     </script>
