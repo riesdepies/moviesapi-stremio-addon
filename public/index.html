@@ -16,59 +16,64 @@
             background-color: var(--background-color);
             color: var(--text-color);
             margin: 0;
-            padding: 20px;
+            padding: 40px 20px;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            text-align: center;
         }
         .main-container {
-            background-color: var(--container-color);
-            padding: 40px;
-            border-radius: 12px;
-            max-width: 800px;
-            width: 90%;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 900px;
+            text-align: center;
         }
         .logo {
-            font-size: 3rem;
+            font-size: 3.5rem;
             font-weight: bold;
             color: var(--primary-color);
             margin-bottom: 20px;
         }
-        p.intro {
-            font-size: 1.1rem;
+        .intro {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto 40px auto;
             line-height: 1.6;
-            margin-bottom: 30px;
         }
         .options-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 25px;
         }
-        .option-card {
-            background-color: #333;
-            padding: 25px;
-            border-radius: 8px;
-            text-align: left;
-            border: 1px solid #444;
+        @media (min-width: 900px) {
+            .options-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
         }
-        .option-card h3 {
+        .option-card {
+            background-color: var(--container-color);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .option-card h2 {
             margin-top: 0;
             color: var(--primary-color);
-            font-size: 1.4rem;
+            font-size: 1.5rem;
         }
         .option-card p {
-            font-size: 0.95rem;
+            font-size: 1rem;
             line-height: 1.5;
-            margin-bottom: 20px;
+            color: #ccc;
+            flex-grow: 1;
         }
         .install-button {
             display: inline-block;
             background-color: var(--primary-color);
             color: white;
-            padding: 12px 25px;
+            padding: 15px 30px;
             font-size: 1.1rem;
             font-weight: bold;
             text-decoration: none;
@@ -76,103 +81,123 @@
             border: none;
             cursor: pointer;
             transition: background-color 0.2s ease, transform 0.2s ease;
+            margin-top: 15px;
         }
         .install-button:hover {
             background-color: #f6121d;
             transform: scale(1.05);
+        }
+        .manual-install {
+            border-top: 1px solid #444;
+            padding-top: 15px;
+            margin-top: 20px;
         }
         .url-container {
             display: flex;
             background-color: #111;
             border-radius: 6px;
             overflow: hidden;
-            border: 1px solid #555;
-            margin-top: 15px;
+            border: 1px solid #333;
         }
         .url-input {
             flex-grow: 1;
             background: none;
             border: none;
-            color: #ccc;
-            padding: 10px;
-            font-size: 0.85rem;
+            color: var(--text-color);
+            padding: 12px;
+            font-size: 0.9rem;
         }
         .copy-button {
-            background-color: #444;
+            background-color: #333;
             color: white;
             border: none;
             padding: 0 15px;
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
-        @media (min-width: 768px) {
-            .options-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
     </style>
 </head>
 <body>
     <div class="main-container">
         <div class="logo">Nepflix 2</div>
-        <p class="intro">Kies uw installatiemodus. Elke modus biedt een andere balans tussen laadsnelheid en serverbelasting.</p>
+        <p class="intro">Kies uw installatiemodus. U kunt meerdere modi tegelijk installeren.</p>
         
-        <div class="options-grid" id="options-container">
-            <!-- Installatie-opties worden hier dynamisch ingevoegd -->
+        <div class="options-grid">
+            <!-- Optie 1: No Prefetch -->
+            <div class="option-card">
+                <div>
+                    <h2>No Prefetch</h2>
+                    <p><strong>Snelste laadtijd, traagste start.</strong> De stream wordt pas gezocht als u erop klikt in Stremio. Laadt snel in Stremio, maar duurt langer voordat de video start.</p>
+                </div>
+                <div class="install-section">
+                    <a href="#" class="install-button" data-mode="no-prefetch">Installeer</a>
+                    <div class="manual-install">
+                        <div class="url-container">
+                            <input type="text" class="url-input" data-mode="no-prefetch" readonly>
+                            <button class="copy-button" data-mode="no-prefetch">Kopieer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Optie 2: Prefetch 1 -->
+            <div class="option-card">
+                <div>
+                    <h2>Prefetch 1</h2>
+                    <p><strong>Goede balans.</strong> De eerste stap van het zoekproces wordt gedaan als u de streams laadt. Het starten van de video is hierdoor sneller dan bij 'No Prefetch'.</p>
+                </div>
+                 <div class="install-section">
+                    <a href="#" class="install-button" data-mode="prefetch-1">Installeer</a>
+                    <div class="manual-install">
+                        <div class="url-container">
+                            <input type="text" class="url-input" data-mode="prefetch-1" readonly>
+                            <button class="copy-button" data-mode="prefetch-1">Kopieer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Optie 3: Full Prefetch -->
+            <div class="option-card">
+                <div>
+                    <h2>Full Prefetch</h2>
+                    <p><strong>Traagste laadtijd, snelste start.</strong> De volledige stream link wordt direct gezocht. Dit kan het laden van de streamlijst in Stremio vertragen, maar de video start direct.</p>
+                </div>
+                 <div class="install-section">
+                    <a href="#" class="install-button" data-mode="full-prefetch">Installeer</a>
+                    <div class="manual-install">
+                        <div class="url-container">
+                            <input type="text" class="url-input" data-mode="full-prefetch" readonly>
+                            <button class="copy-button" data-mode="full-prefetch">Kopieer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const options = [
-                {
-                    mode: 'noprefetch',
-                    title: 'No Prefetch',
-                    description: '<strong>Snelste laadtijd, langzaamste start.</strong> De stream wordt pas gezocht wanneer je erop klikt in Stremio. Ideaal voor lichte servers.'
-                },
-                {
-                    mode: 'prefetch1',
-                    title: 'Prefetch 1',
-                    description: '<strong>Goede balans.</strong> De eerste stap van het zoekproces wordt gedaan bij het laden. De film start sneller, maar het laden van de streamlijst duurt iets langer.'
-                },
-                {
-                    mode: 'fullprefetch',
-                    title: 'Full Prefetch',
-                    description: '<strong>Langzaamste laadtijd, snelste start.</strong> De volledige streamlink wordt direct gezocht. De film start direct, maar het kan even duren voor de streams verschijnen.'
-                }
-            ];
+            const modes = ['no-prefetch', 'prefetch-1', 'full-prefetch'];
+            
+            modes.forEach(mode => {
+                const installButton = document.querySelector(`.install-button[data-mode="${mode}"]`);
+                const manifestUrlInput = document.querySelector(`.url-input[data-mode="${mode}"]`);
+                const copyButton = document.querySelector(`.copy-button[data-mode="${mode}"]`);
 
-            const container = document.getElementById('options-container');
-            const origin = window.location.origin;
-
-            options.forEach(option => {
-                const manifestUrl = `${origin}/${option.mode}/manifest.json`;
+                const manifestUrl = `${window.location.origin}/${mode}/manifest.json`;
                 const stremioInstallUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
 
-                const cardHtml = `
-                    <div class="option-card" id="card-${option.mode}">
-                        <h3>Nepflix 2 (${option.title})</h3>
-                        <p>${option.description}</p>
-                        <a href="${stremioInstallUrl}" class="install-button">Installeer</a>
-                        <div class="url-container">
-                            <input type="text" value="${manifestUrl}" class="url-input" readonly>
-                            <button class="copy-button">Kopieer</button>
-                        </div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', cardHtml);
-            });
-            
-            // Event listener ALLEEN voor de kopieer-knoppen
-            container.addEventListener('click', function(e) {
-                const copyButton = e.target.closest('.copy-button');
-                if (copyButton) {
-                    const input = copyButton.previousElementSibling;
-                    input.select();
+                installButton.setAttribute('href', stremioInstallUrl);
+                manifestUrlInput.value = manifestUrl;
+
+                copyButton.addEventListener('click', function() {
+                    manifestUrlInput.select();
                     document.execCommand('copy');
+                    const originalText = copyButton.textContent;
                     copyButton.textContent = 'Gekopieerd!';
-                    setTimeout(() => { copyButton.textContent = 'Kopieer'; }, 2000);
-                }
+                    setTimeout(() => { copyButton.textContent = originalText; }, 2000);
+                });
             });
         });
     </script>
