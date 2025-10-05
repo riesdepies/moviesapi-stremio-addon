@@ -1,7 +1,7 @@
 {
   "name": "stremio-addon-nepflix2",
-  "version": "2.0.1",
-  "description": "Fetches moviesapi.club streaming sources",
+  "version": "3.0.0",
+  "description": "Fetches moviesapi.club streaming sources with prefetching options",
   "dependencies": {
     "stremio-addon-sdk": "^1.6.10",
     "cloudscraper": "^4.6.0"
